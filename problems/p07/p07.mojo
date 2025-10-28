@@ -18,6 +18,8 @@ fn add_10_blocks_2d(
     row = block_dim.y * block_idx.y + thread_idx.y
     col = block_dim.x * block_idx.x + thread_idx.x
     # FILL ME IN (roughly 2 lines)
+    if row < UInt(size) and col < UInt(size) :
+        output[row*UInt(size) + col]=a[row*UInt(size)+col] +10.0
 
 
 # ANCHOR_END: add_10_blocks_2d
