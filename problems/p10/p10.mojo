@@ -28,10 +28,12 @@ fn shared_memory_race(
         MutableAnyOrigin,
         address_space = AddressSpace.SHARED,
     ].stack_allocation()
-
-    if row < size and col < size:
-        shared_sum[0] += a[row, col]
-
+    if row == 0 and col == 0:
+        local_sum = Scalar[dtype](0.0)
+        for r in range(size):
+            for c in range(size):
+                local_sum += rebind[Scalar[dtype]](a[r, c])
+        shared_sum[0] = local_sum[0]
     barrier()
 
     if row < size and col < size:
