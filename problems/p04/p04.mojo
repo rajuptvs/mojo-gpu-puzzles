@@ -21,9 +21,6 @@ fn add_10_2d(
         output[row * size + col] = a[row * size + col] + 10.0
 
 
-
-
-
 # ANCHOR_END: add_10_2d
 
 

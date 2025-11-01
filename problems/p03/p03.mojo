@@ -21,7 +21,6 @@ fn add_10_guard(
         output[i] = a[i] + 10.0
 
 
-
 # ANCHOR_END: add_10_guard
 
 

@@ -26,7 +26,7 @@ fn add_10_shared(
     # print(block_idx.x,thread_idx.x)
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
-    print(global_i,local_i)
+    print(global_i, local_i)
     # local data into shared memory
     if global_i < size:
         shared[local_i] = a[global_i]
@@ -35,7 +35,7 @@ fn add_10_shared(
     # works within a thread block
     barrier()
     if global_i < size:
-        output[global_i]=shared[local_i] + 10
+        output[global_i] = shared[local_i] + 10
 
     # FILL ME IN (roughly 2 lines)
 
