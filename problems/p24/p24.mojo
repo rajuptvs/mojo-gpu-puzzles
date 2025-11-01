@@ -206,7 +206,7 @@ fn benchmark_simple_warp_parameterized[
 @parameter
 @always_inline
 fn benchmark_functional_warp_parameterized[
-    test_size: Int
+    test_size: UInt
 ](mut bencher: Bencher) raises:
     alias n_warps = test_size // WARP_SIZE
     alias in_layout = Layout.row_major(test_size)
