@@ -224,7 +224,9 @@ fn benchmark_minimal_parameterized[test_size: UInt](mut b: Bencher) raises:
 
 @parameter
 @always_inline
-fn benchmark_sophisticated_parameterized[test_size: UInt](mut b: Bencher) raises:
+fn benchmark_sophisticated_parameterized[
+    test_size: UInt
+](mut b: Bencher) raises:
     @parameter
     @always_inline
     fn sophisticated_workflow(ctx: DeviceContext) raises:

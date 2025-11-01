@@ -65,7 +65,7 @@ fn broadcast_shuffle_coordination[
 ](
     output: LayoutTensor[mut=True, dtype, layout],
     input: LayoutTensor[mut=False, dtype, layout],
-):  
+):
     """
     Combine broadcast() and shuffle_down() for advanced warp coordination.
     Lane 0 computes block-local scaling factor, broadcasts it to all lanes in the warp.

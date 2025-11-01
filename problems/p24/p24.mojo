@@ -135,7 +135,7 @@ fn expected_output[
 
 
 fn rand_int[
-    dtype: DType, size: UInt 
+    dtype: DType, size: UInt
 ](buff: DeviceBuffer[dtype], min: Int = 0, max: Int = 100) raises:
     with buff.map_to_host() as buff_host:
         for i in range(size):

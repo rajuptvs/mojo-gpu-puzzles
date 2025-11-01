@@ -18,7 +18,7 @@ alias BLOCK_DIM_X = 1 << log2_ceil(SIZE)
 
 
 fn softmax_gpu_kernel[
-    layout: Layout, 
+    layout: Layout,
     input_size: UInt,
     dtype: DType = DType.float32,
 ](

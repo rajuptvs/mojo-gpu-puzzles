@@ -27,6 +27,7 @@ fn broadcast_add[
     col = thread_idx.x
     # FILL ME IN (roughly 2 lines)
 
+
 # ANCHOR_END: broadcast_add_layout_tensor
 def main():
     with DeviceContext() as ctx:

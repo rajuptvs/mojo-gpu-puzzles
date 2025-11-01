@@ -79,7 +79,7 @@ fn tiled_elementwise_add[
 
 # ANCHOR: manual_vectorized_tiled_elementwise_add
 fn manual_vectorized_tiled_elementwise_add[
-    layout: Layout, 
+    layout: Layout,
     dtype: DType,
     simd_width: UInt,
     num_threads_per_tile: UInt,
@@ -98,7 +98,9 @@ fn manual_vectorized_tiled_elementwise_add[
     @parameter
     @always_inline
     fn process_manual_vectorized_tiles[
-        num_threads_per_tile: UInt, rank: UInt, alignment: UInt = align_of[dtype]()
+        num_threads_per_tile: UInt,
+        rank: UInt,
+        alignment: UInt = align_of[dtype](),
     ](indices: IndexList[rank]) capturing -> None:
         tile_id = indices[0]
         print("tile_id:", tile_id)
@@ -137,7 +139,9 @@ fn vectorize_within_tiles_elementwise_add[
     @parameter
     @always_inline
     fn process_tile_with_vectorize[
-        num_threads_per_tile: UInt, rank: UInt, alignment: UInt = align_of[dtype]()
+        num_threads_per_tile: UInt,
+        rank: UInt,
+        alignment: UInt = align_of[dtype](),
     ](indices: IndexList[rank]) capturing -> None:
         tile_id = indices[0]
         tile_start = tile_id * tile_size
