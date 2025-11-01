@@ -12,7 +12,7 @@ alias BLOCKS_PER_GRID = 1
 alias THREADS_PER_BLOCK = SIZE
 alias dtype = DType.float32
 alias vector_layout = Layout.row_major(SIZE)
-alias ITER = 2
+alias ITER = 3
 
 
 # ANCHOR: first_crash
@@ -38,7 +38,7 @@ fn process_sliding_window(
 
     # Sum elements in sliding window: [i-1, i, i+1]
     for offset in range(ITER):
-        idx = thread_id + offset - 1
+        idx = thread_id + UInt(offset) - 1
         if 0 <= idx < SIZE:
             value = rebind[Scalar[dtype]](a[idx])
             window_sum += value
