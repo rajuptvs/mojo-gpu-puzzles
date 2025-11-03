@@ -27,6 +27,37 @@ fn conv_1d_simple[
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
     # FILL ME IN (roughly 14 lines)
+    shared_input = LayoutTensor[
+        dtype,
+        Layout.row_major(SIZE),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+    shared_conv = LayoutTensor[
+        dtype,
+        Layout.row_major(CONV),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if local_i < UInt(SIZE):
+        shared_input[local_i] = a[local_i]
+
+    if local_i < UInt(CONV):
+        shared_conv[local_i] = b[local_i]
+
+    barrier()
+    # let local_i = 0, conv_size = 3, conv_idx = 0,2
+    # so it would be local_i + conv_idx
+    if global_i < UInt(SIZE):
+        var local_sum: output.element_type = 0
+
+        @parameter
+        for j in range(CONV):
+            if local_i + UInt(j) < SIZE:
+                local_sum += shared_input[local_i + UInt(j)] * shared_conv[j]
+
+        output[global_i] = local_sum
 
 
 # ANCHOR_END: conv_1d_simple
@@ -51,6 +82,49 @@ fn conv_1d_block_boundary[
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
     # FILL ME IN (roughly 18 lines)
+    # the shared_input should have padding to allow convolution operation.
+    # because when the thread is at last position, it tries to access the memory from adjacent block.
+    # to circumvent this we pad this extra memory!
+    shared_input = LayoutTensor[
+        dtype,
+        Layout.row_major(TPB + CONV_2 - 1),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+    shared_conv = LayoutTensor[
+        dtype,
+        Layout.row_major(CONV_2),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if global_i < SIZE_2:
+        shared_input[local_i] = a[global_i]
+    else:
+        shared_input[local_i] = 0
+    # This is essentially padding the extra allocated memory.
+    # But only using the first CONV_2 - 1 threads.. and not all
+    if local_i < CONV_2 - 1:
+        next_idx = global_i + TPB
+        if next_idx < SIZE_2:
+            shared_input[TPB + local_i] = a[next_idx]
+        else:
+            shared_input[TPB + local_i] = 0
+
+    if local_i < CONV_2:
+        shared_conv[local_i] = b[local_i]
+
+    barrier()
+
+    if global_i < SIZE_2:
+        var local_sum: output.element_type = 0
+
+        @parameter
+        for j in range(CONV_2):
+            if global_i + j < SIZE_2:
+                local_sum += shared_input[local_i + j] * shared_conv[j]
+
+        output[global_i] = local_sum
 
 
 # ANCHOR_END: conv_1d_block_boundary
