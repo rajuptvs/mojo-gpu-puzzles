@@ -25,6 +25,34 @@ fn prefix_sum_simple[
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
     # FILL ME IN (roughly 18 lines)
+    shared_mem = LayoutTensor[
+        dtype,
+        Layout.row_major(TPB),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if global_i < size:
+        shared_mem[local_i] = a[global_i]
+
+    barrier()  # synchronization
+    offset = 1
+    for i in range(log2(Scalar[dtype](TPB))):
+        var curr_value: output.element_type = 0
+        if local_i >= offset and local_i < size:
+            curr_value = shared_mem[local_i - offset]
+
+        barrier()
+
+        if local_i >= offset and local_i < size:
+            shared_mem[local_i] += curr_value
+
+        barrier()
+
+        offset = offset * 2
+
+        if global_i < size:
+            output[global_i] = shared_mem[local_i]
 
 
 # ANCHOR_END: prefix_sum_simple
@@ -47,6 +75,42 @@ fn prefix_sum_local_phase[
 ):
     global_i = block_dim.x * block_idx.x + thread_idx.x
     local_i = thread_idx.x
+
+    shared_mem = LayoutTensor[
+        dtype,
+        layout.row_major(TPB),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if global_i < size:
+        shared_mem[local_i] = a[global_i]
+
+    barrier()
+
+    offset = 1
+    for i in range(log2(Scalar[dtype](TPB))):
+        var curr_value: output.element_type = 0
+        if local_i >= offset and local_i < TPB:
+            curr_value = shared_mem[local_i - offset]
+
+        barrier()  # have a freaking sync after a read
+
+        if local_i >= offset and local_i < TPB:
+            shared_mem[local_i] += curr_value
+
+        barrier()  # same suggestion
+
+        offset = offset * 2
+
+        if global_i < size:
+            output[global_i] = shared_mem[local_i]
+        # block 0 sum would be stored in output[15+0]
+        # block 1 sum would be stored in output[15+1]
+
+        if local_i == TPB - 1:
+            output[size + block_idx.x] = shared_mem[local_i]
+
     # FILL ME IN (roughly 20 lines)
 
 
@@ -56,6 +120,11 @@ fn prefix_sum_block_sum_phase[
 ](output: LayoutTensor[mut=True, dtype, layout], size: Int):
     global_i = block_dim.x * block_idx.x + thread_idx.x
     # FILL ME IN (roughly 3 lines)
+    if block_idx.x > 0 and global_i < size:
+        prev_block_sum = output[
+            size + block_idx.x - 1
+        ]  # because you want the sum of the prev block
+        output[global_i] += prev_block_sum
 
 
 # ANCHOR_END: prefix_sum_complete
@@ -75,7 +144,7 @@ def main():
 
         size = SIZE if use_simple else SIZE_2
         num_blocks = (size + TPB - 1) // TPB
-
+        print(size)
         if not use_simple and num_blocks > EXTENDED_SIZE - SIZE_2:
             raise Error("Extended buffer too small for the number of blocks")
 
