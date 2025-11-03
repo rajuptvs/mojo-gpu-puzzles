@@ -39,10 +39,6 @@ fn pooling(
             shared[global_i - 1] + shared[global_i - 2] + shared[global_i]
         )
 
-    # print(global_i,local_i)
-    # print(output[global_i],a[global_i])
-    # FILL ME IN (roughly 10 lines)
-
 
 # ANCHOR_END: pooling
 
