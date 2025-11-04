@@ -27,6 +27,15 @@ fn naive_matmul[
     col = block_dim.x * block_idx.x + thread_idx.x
     # FILL ME IN (roughly 6 lines)
 
+    if row < size and col < size:
+        var accum: output.element_type = 0
+
+        @parameter
+        for k in range(size):
+            accum += a[row, k] * b[k, col]
+
+        output[row, col] = accum
+
 
 # ANCHOR_END: naive_matmul
 
