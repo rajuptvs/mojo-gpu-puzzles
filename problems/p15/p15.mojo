@@ -29,6 +29,41 @@ fn axis_sum[
     local_i = thread_idx.x
     batch = block_idx.y
     # FILL ME IN (roughly 15 lines)
+    print(global_i, local_i, batch)
+    shared_mem = LayoutTensor[
+        dtype,
+        Layout.row_major(TPB),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+
+    if local_i < size:
+        shared_mem[local_i] = a[batch, local_i]
+    else:
+        shared_mem[local_i] = 0
+
+    barrier()
+    # starts with 4 (8//2)
+    stride = TPB // 2
+    while stride > 0:
+        var curr_value: output.element_type = 0
+        if local_i < stride:
+            curr_value = shared_mem[local_i + stride]
+        barrier()
+
+        if local_i < stride:
+            shared_mem[local_i] += curr_value
+        barrier()
+        # on first pass this would be 4 // 2
+        stride = stride // 2
+
+    if local_i == 0:
+        output[batch, 0] = shared_mem[0]
+
+    # if local_i < size:
+    #     shared_mem[local_i]=a[global_i]
+    # stride = size//2
+    # while stride > 0:
 
 
 # ANCHOR_END: axis_sum
