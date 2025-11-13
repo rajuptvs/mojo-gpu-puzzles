@@ -26,7 +26,63 @@ fn softmax_gpu_kernel[
     input: LayoutTensor[mut=False, dtype, layout],
 ):
     # FILL IN (roughly 31 lines)
-    ...
+    shared_max = LayoutTensor[
+        dtype,
+        Layout.row_major(BLOCK_DIM_X),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+    shared_sum = LayoutTensor[
+        dtype,
+        Layout.row_major(BLOCK_DIM_X),
+        MutableAnyOrigin,
+        address_space = AddressSpace.SHARED,
+    ].stack_allocation()
+    global_i = thread_idx.x
+
+    # Initialize out-of-bounds (shared_max[local_i], global_i >= input_size) shared memory addresses to the minimum
+    # finite value for dtype, ensuring that if these elements are accessed in the parallel max reduction below they
+    # do not influence the result (max(min_finite, x) == x for any x).
+    var value: Scalar[dtype] = min_finite[dtype]()
+    if global_i < input_size:
+        value = rebind[Scalar[dtype]](input[global_i])
+    shared_max[global_i] = value
+    barrier()
+
+    stride = BLOCK_DIM_X // 2
+    while stride > 0:
+        if global_i < stride:
+            shared_max[global_i] = max(
+                shared_max[global_i], shared_max[global_i + stride]
+            )
+
+        barrier()
+        stride //= 2
+
+    block_max = shared_max[0]  # we do a parallel reduction to get the max
+
+    var exp_value: Scalar[dtype] = 0.0
+    if global_i < input_size:
+        exp_value = rebind[Scalar[dtype]](exp(value - block_max))
+
+    shared_sum[global_i] = exp_value
+    barrier()
+    stride = BLOCK_DIM_X // 2
+    while stride > 0:
+        if global_i < stride:
+            shared_sum[global_i] += shared_sum[global_i + stride]
+
+        barrier()
+        stride //= 2
+
+    block_sum = shared_sum[0]  # we do a parallel reduction to get the sum
+    # so we have exp_value/block_sum which is softmax
+    if global_i < input_size:
+        output[global_i] = exp_value / block_sum
+
+    # if global_i == 0:
+    #     print(dtype)
+    #     print(value)
 
 
 # ANCHOR_END: softmax_gpu_kernel
@@ -41,8 +97,18 @@ fn softmax_cpu_kernel[
     output: LayoutTensor[dtype, layout, MutableAnyOrigin],
     input: LayoutTensor[dtype, layout, MutableAnyOrigin],
 ):
-    # FILL IN (roughly 10 lines)
-    ...
+    var max_val: Scalar[dtype] = min_finite[dtype]()
+    for i in range(input_size):
+        max_val = max(max_val, rebind[Scalar[dtype]](input[i]))
+
+    var sum_exp: Scalar[dtype] = 0.0
+    for i in range(input_size):
+        var exp_val = rebind[Scalar[dtype]](exp(input[i] - max_val))
+        output[i] = exp_val
+        sum_exp += exp_val
+
+    for i in range(input_size):
+        output[i] = output[i] / sum_exp
 
 
 # ANCHOR_END: softmax_cpu_kernel
@@ -75,7 +141,6 @@ struct SoftmaxCustomOp:
         @parameter
         if target == "gpu":
             gpu_ctx = ctx.get_device_context()
-            # making sure the output tensor is zeroed out before the kernel is called
             gpu_ctx.enqueue_memset(
                 DeviceBuffer[output_tensor.dtype](
                     gpu_ctx,
